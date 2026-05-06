@@ -4,6 +4,19 @@ export const config = {
   runtime: 'edge',
 };
 
+// Tiny h() helper — equivalent of JSX's React.createElement
+// Returns the plain object structure that Satori expects.
+function h(type, props, ...children) {
+  const flatChildren = children.flat().filter(c => c !== null && c !== undefined && c !== false);
+  return {
+    type,
+    props: {
+      ...(props || {}),
+      children: flatChildren.length === 1 ? flatChildren[0] : flatChildren,
+    },
+  };
+}
+
 // ---------- shopiq brand tokens ----------
 const C = {
   blue:   { 50:'#e0efff', 200:'#9bcbfe', 400:'#51a3fd', 600:'#2170d8', 700:'#1750b4' },
@@ -55,17 +68,12 @@ function rng(seed) {
 }
 const pick = (rand, arr) => arr[Math.floor(rand() * arr.length)];
 
-// ---------- aurora background using radial gradients (Satori-compatible) ----------
-// Note: Satori doesn't support feGaussianBlur, so we simulate the aurora effect
-// with overlapping radial gradients. Visual is very close to the inline cover.
 function auroraBackground(rand, palette, w, h) {
   const blobs = palette.blobs.map((c) => ({
     cx: rand() * w,
     cy: rand() * h,
-    r: h * (0.5 + rand() * 0.3),
     color: c,
   }));
-
   const gradients = blobs
     .map(
       (b) =>
@@ -75,14 +83,12 @@ function auroraBackground(rand, palette, w, h) {
         ).toFixed(1)}%, ${b.color}cc 0%, ${b.color}66 25%, transparent 50%)`
     )
     .join(', ');
-
   return {
     backgroundColor: palette.bg,
     backgroundImage: gradients,
   };
 }
 
-// ---------- pattern as SVG ----------
 function patternSvg(rand, theme, palette, size) {
   const isDark = theme.name.startsWith('dark');
   const lineCol = isDark ? 'rgba(250,250,250,0.20)' : 'rgba(15,17,21,0.20)';
@@ -91,7 +97,6 @@ function patternSvg(rand, theme, palette, size) {
   let inner = '';
 
   if (type === 0) {
-    // dot matrix
     const cols = 12, rows = 12;
     const cw = size / cols, ch = size / rows;
     for (let i = 0; i < rows; i++) {
@@ -102,14 +107,12 @@ function patternSvg(rand, theme, palette, size) {
       }
     }
   } else if (type === 1) {
-    // isometric
     const step = 18;
     for (let i = -size; i < size + size; i += step) {
       inner += `<line x1="${i}" y1="${size}" x2="${i + size*0.577}" y2="0" stroke="${lineCol}" stroke-width="0.5"/>`;
       inner += `<line x1="${i}" y1="0" x2="${i + size*0.577}" y2="${size}" stroke="${lineCol}" stroke-width="0.5"/>`;
     }
   } else if (type === 2) {
-    // concentric squares
     const cx = size/2, cy = size/2;
     for (let i = 1; i <= 8; i++) {
       const sz = size * (i / 9);
@@ -117,7 +120,6 @@ function patternSvg(rand, theme, palette, size) {
       inner += `<rect x="${(cx - sz/2).toFixed(1)}" y="${(cy - sz/2).toFixed(1)}" width="${sz.toFixed(1)}" height="${sz.toFixed(1)}" rx="3" stroke="${isAccent ? accentCol : lineCol}" fill="none" stroke-width="${isAccent ? 1.2 : 0.5}"/>`;
     }
   } else if (type === 3) {
-    // topographic waves
     const lines = 10;
     for (let i = 0; i < lines; i++) {
       const yBase = (size / lines) * i + (size / lines) / 2;
@@ -132,7 +134,6 @@ function patternSvg(rand, theme, palette, size) {
       inner += `<path d="${d}" stroke="${isAccent ? accentCol : lineCol}" stroke-width="${isAccent ? 1.2 : 0.5}" fill="none"/>`;
     }
   } else {
-    // staggered bricks
     const cols = 6, rows = 8;
     const cw = size / cols, ch = size / rows;
     for (let i = 0; i < rows; i++) {
@@ -155,7 +156,6 @@ function logoDataUri(color) {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-// ---------- title wrapping (manual, Satori doesn't auto-wrap reliably) ----------
 function wrapText(text, charsPerLine, maxLines) {
   const words = text.split(' ');
   const lines = [];
@@ -179,7 +179,6 @@ function wrapText(text, charsPerLine, maxLines) {
   return lines;
 }
 
-// ---------- main handler ----------
 export default async function handler(req) {
   try {
     const { searchParams } = new URL(req.url);
@@ -201,151 +200,153 @@ export default async function handler(req) {
     const patternUri = patternSvg(rand, theme, palette, 200);
     const isDark = theme.name.startsWith('dark');
 
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            width: '1200px',
-            height: '630px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            ...auroraStyle,
-          }}
-        >
-          {/* Stack effect — sheets behind the card */}
-          <div
-            style={{
-              position: 'absolute',
-              left: '378px',
-              top: '41px',
-              width: '480px',
-              height: '560px',
-              background: 'rgba(255,255,255,0.45)',
-              borderRadius: '14px',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              left: '369px',
-              top: '28px',
-              width: '480px',
-              height: '560px',
-              background: 'rgba(255,255,255,0.78)',
-              borderRadius: '14px',
-            }}
-          />
+    // Title lines as div children
+    const titleDivs = titleLines.map((line, i) =>
+      h('div', {
+        key: `t-${i}`,
+        style: {
+          color: theme.text,
+          fontSize: 44,
+          fontWeight: 600,
+          letterSpacing: -1,
+          lineHeight: '52px',
+          fontFamily: 'sans-serif',
+        }
+      }, line)
+    );
 
-          {/* Main card */}
-          <div
-            style={{
+    // Description lines
+    const descDivs = descLines.map((line, i) =>
+      h('div', {
+        key: `d-${i}`,
+        style: {
+          color: theme.sub,
+          fontSize: 16,
+          lineHeight: '22px',
+          fontFamily: 'sans-serif',
+        }
+      }, line)
+    );
+
+    const descBlock = descLines.length > 0
+      ? h('div', { style: { marginTop: 14, display: 'flex', flexDirection: 'column' } }, ...descDivs)
+      : null;
+
+    // Build the tree using h() — equivalent to JSX but no transpile needed
+    const root = h('div',
+      {
+        style: {
+          width: '1200px',
+          height: '630px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          ...auroraStyle,
+        }
+      },
+      // Stack sheet 2 (back, lighter)
+      h('div', {
+        style: {
+          position: 'absolute',
+          left: '378px',
+          top: '41px',
+          width: '480px',
+          height: '560px',
+          background: 'rgba(255,255,255,0.45)',
+          borderRadius: '14px',
+          display: 'flex',
+        }
+      }),
+      // Stack sheet 1 (front, brighter)
+      h('div', {
+        style: {
+          position: 'absolute',
+          left: '369px',
+          top: '28px',
+          width: '480px',
+          height: '560px',
+          background: 'rgba(255,255,255,0.78)',
+          borderRadius: '14px',
+          display: 'flex',
+        }
+      }),
+      // Main card
+      h('div',
+        {
+          style: {
+            position: 'absolute',
+            left: '360px',
+            top: '15px',
+            width: '480px',
+            height: '600px',
+            background: theme.fill,
+            border: `0.5px solid ${theme.stroke}`,
+            borderRadius: '14px',
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '36px 32px 32px 32px',
+          }
+        },
+        // Logo
+        h('img', {
+          src: logoDataUri(theme.logo),
+          width: 131,
+          height: 58,
+        }),
+        // Pattern square
+        h('div',
+          {
+            style: {
               position: 'absolute',
-              left: '360px',
-              top: '15px',
-              width: '480px',
-              height: '600px',
-              background: theme.fill,
-              border: `0.5px solid ${theme.stroke}`,
-              borderRadius: '14px',
+              left: patSide === 'br' ? '248px' : '32px',
+              top: patSide === 'br' ? '320px' : '90px',
+              width: '200px',
+              height: '200px',
+              borderRadius: '8px',
+              background: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)',
+              display: 'flex',
+            }
+          },
+          h('img', { src: patternUri, width: 200, height: 200 })
+        ),
+        // Title block
+        h('div',
+          {
+            style: {
+              position: 'absolute',
+              left: '32px',
+              top: '230px',
+              width: '416px',
               display: 'flex',
               flexDirection: 'column',
-              padding: '36px 32px 32px 32px',
-            }}
-          >
-            {/* Logo */}
-            <img
-              src={logoDataUri(theme.logo)}
-              width="131"
-              height="58"
-              style={{ marginBottom: '0px' }}
-            />
-
-            {/* Pattern — positioned absolutely within card */}
-            <div
-              style={{
-                position: 'absolute',
-                left: patSide === 'br' ? '248px' : '32px',
-                top: patSide === 'br' ? '320px' : '90px',
-                width: '200px',
-                height: '200px',
-                borderRadius: '8px',
-                background: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)',
-                display: 'flex',
-              }}
-            >
-              <img src={patternUri} width="200" height="200" />
-            </div>
-
-            {/* Title — positioned to sit centered vertically */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '32px',
-                top: '230px',
-                width: '416px',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              {titleLines.map((line, i) => (
-                <div
-                  key={i}
-                  style={{
-                    color: theme.text,
-                    fontSize: '44px',
-                    fontWeight: 600,
-                    letterSpacing: '-1px',
-                    lineHeight: '52px',
-                    fontFamily: 'sans-serif',
-                  }}
-                >
-                  {line}
-                </div>
-              ))}
-
-              {descLines.length > 0 && (
-                <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column' }}>
-                  {descLines.map((line, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        color: theme.sub,
-                        fontSize: '16px',
-                        lineHeight: '22px',
-                        fontFamily: 'sans-serif',
-                      }}
-                    >
-                      {line}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* URL bottom-right */}
-            <div
-              style={{
-                position: 'absolute',
-                right: '32px',
-                bottom: '32px',
-                color: theme.sub,
-                fontSize: '13px',
-                letterSpacing: '0.4px',
-                fontFamily: 'sans-serif',
-              }}
-            >
-              shopiq.com
-            </div>
-          </div>
-        </div>
-      ),
-      {
-        width: 1200,
-        height: 630,
-      }
+            }
+          },
+          ...titleDivs,
+          descBlock
+        ),
+        // URL
+        h('div', {
+          style: {
+            position: 'absolute',
+            right: '32px',
+            bottom: '32px',
+            color: theme.sub,
+            fontSize: 13,
+            letterSpacing: 0.4,
+            fontFamily: 'sans-serif',
+          }
+        }, 'shopiq.com')
+      )
     );
+
+    return new ImageResponse(root, {
+      width: 1200,
+      height: 630,
+    });
   } catch (e) {
-    return new Response(`Failed to generate cover: ${e.message}`, { status: 500 });
+    return new Response(`Failed to generate cover: ${e.message}`, {
+      status: 500,
+      headers: { 'content-type': 'text/plain' },
+    });
   }
 }
