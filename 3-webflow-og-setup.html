@@ -1,0 +1,45 @@
+<!--
+  STEP 3: Wire up Open Graph in Webflow
+
+  This is the Webflow-side change. Once your Vercel endpoint is deployed
+  (you'll get a URL like https://shopiq-og.vercel.app), set the Open Graph
+  Image URL field in your Guide CMS template to point at it with CMS
+  values as query params.
+-->
+
+<!--
+  In Webflow:
+
+  1. Open the Guide CMS template page settings (gear icon)
+  2. Scroll to "Open Graph Settings"
+  3. Find "Open Graph Image" → click the gear/settings → choose "Custom URL"
+     (NOT "Get image from CMS field")
+  4. In the URL field, paste this and bind the {{wf}} placeholders to
+     CMS fields using Webflow's purple "+" button:
+
+  https://YOUR-VERCEL-URL.vercel.app/api/cover?slug={{slug}}&title={{name}}&desc={{subtitle}}
+
+  Replace:
+    - YOUR-VERCEL-URL with your actual deployed URL
+    - {{slug}}    → bind to Slug field
+    - {{name}}    → bind to Name (title) field
+    - {{subtitle}}→ bind to your description field
+
+  Webflow will URL-encode the values automatically.
+
+  5. Also set "Open Graph Title" to {{name}} and "Open Graph Description"
+     to {{subtitle}} (or your meta description) if not already set.
+
+  6. Set Twitter Card type to "summary_large_image" in the same panel
+     for proper Twitter/X preview rendering.
+
+  7. Publish the site.
+
+  Test it at:
+    https://www.opengraph.xyz/  (paste your guide post URL)
+    https://cards-dev.twitter.com/validator
+    https://www.linkedin.com/post-inspector/
+
+  Note: LinkedIn caches OG images aggressively. If you change the image
+  for an existing post, use the Post Inspector above to force a refresh.
+-->
