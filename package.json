@@ -4,7 +4,9 @@
   "description": "Open Graph image generator for shopiq guides",
   "private": true,
   "dependencies": {
-    "@vercel/og": "^0.6.3"
+    "@napi-rs/canvas": "^1.0.0",
+    "@vercel/og": "^0.6.3",
+    "pdfjs-dist": "^5.7.284"
   },
   "engines": {
     "node": ">=18"
