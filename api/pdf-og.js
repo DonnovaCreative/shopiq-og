@@ -26,7 +26,7 @@ export const config = {
 // Brand config
 // ============================================================
 const BRAND = {
-  bg: "#0A4FA8",
+  bg: "#03116d",
   cardBg: "#FFFFFF",
   cardShadow: "rgba(0, 0, 0, 0.18)",
   width: 1200,
