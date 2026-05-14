@@ -9,7 +9,7 @@ export const config = {
   runtime: 'edge',
 };
 
-const FALLBACK_IMAGE = 'https://shopiq.com/og-fallback.jpg';
+const FALLBACK_IMAGE = 'https://cdn.prod.website-files.com/68712201eff36d5a054b7791/695b3fd459f0a3332bea09ea_shopiq-primary-og.png';
 
 const CACHE_HEADERS = {
   'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
